@@ -1,4 +1,7 @@
-use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+use curve25519_dalek::{
+    ristretto::{CompressedRistretto, RistrettoPoint},
+    scalar::Scalar,
+};
 use digest::{
     consts::{U32, U64},
     generic_array::GenericArray,
@@ -74,6 +77,25 @@ pub struct RistrettoHash<H> {
     // we need to finish that update with an explicit call to `end_update`.
     updating: bool,
     acc: RistrettoPoint,
+}
+
+#[derive(Debug)]
+pub struct InvalidRistrettoHashBytes;
+
+impl<H: Default> RistrettoHash<H> {
+    pub fn as_bytes(&self) -> Vec<u8> {
+        self.acc.compress().as_bytes().to_vec()
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, InvalidRistrettoHashBytes> {
+        Ok(Self {
+            acc: CompressedRistretto::from_slice(bytes)
+                .decompress()
+                .ok_or(InvalidRistrettoHashBytes)?,
+            hash: H::default(),
+            updating: false,
+        })
+    }
 }
 
 impl<H: Digest<OutputSize = U64> + Default> RistrettoHash<H> {
@@ -200,6 +222,25 @@ mod test {
         hash2.update(" full");
         hash2.update(" data");
         hash2.end_update(3);
+
+        let output1 = hash1.finalize();
+        let output2 = hash2.finalize();
+        assert_eq!(output1, output2)
+    }
+
+    #[test]
+    fn test_encode_decode() {
+        let data = b"test data";
+
+        let mut hash1 = RistrettoHash::<Sha512>::default();
+
+        hash1.add(data, 3);
+
+        // save hash1 as bytes
+        let hash1_as_bytes = hash1.as_bytes();
+
+        // load into hash2
+        let hash2 = RistrettoHash::<Sha512>::from_bytes(&hash1_as_bytes).unwrap();
 
         let output1 = hash1.finalize();
         let output2 = hash2.finalize();
