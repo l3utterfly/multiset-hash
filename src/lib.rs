@@ -169,6 +169,12 @@ impl<H: Update> Update for RistrettoHash<H> {
     }
 }
 
+impl<H> PartialEq for RistrettoHash<H> {
+    fn eq(&self, other: &Self) -> bool {
+        self.acc == other.acc
+    }
+}
+
 #[cfg(test)]
 mod test {
     use sha2::Sha512;
