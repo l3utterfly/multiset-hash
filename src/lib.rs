@@ -235,6 +235,17 @@ mod test {
     }
 
     #[test]
+    fn test_partial_eq() {
+        let mut hash1 = RistrettoHash::<Sha512>::default();
+
+        hash1.add("the full data", 3);
+
+        let hash2 = hash1.clone();
+
+        assert!(hash1 == hash2);
+    }
+
+    #[test]
     fn test_encode_decode() {
         let data = b"test data";
 
